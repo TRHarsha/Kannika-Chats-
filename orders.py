@@ -63,20 +63,33 @@ with st.form("order_form"):
         "Corn Nachos": 70
     }
     selected_menu = st.multiselect("Select Menu Items", menu_items)
+    paid_by_cash = st.checkbox("Paid by Cash")
+    paid_by_upi = st.checkbox("Paid by UPI")
     submitted = st.form_submit_button("Submit")
 
     if submitted:
         # Auto-increment the order ID
         order_id = last_order_id + 1
 
-        # Calculate the total amount
+        # Calculate the total amount and prepare the order row
         total_amount = 0
-        for item in selected_menu:
+        order_row = [order_id, customer_name, customer_number]
+
+        for item in menu_items:
             item_name = item.split(" (")[0]
-            total_amount += prices[item_name]
+            if item in selected_menu:
+                order_row.append(item_name)
+                total_amount += prices[item_name]
+            else:
+                order_row.append("")
+
+        # Append the total amount and payment method to the order row
+        order_row.append(total_amount)
+        payment_method = "Cash" if paid_by_cash else "UPI" if paid_by_upi else "None"
+        order_row.append(payment_method)
 
         # Add the order to the spreadsheet
-        sheet.append([order_id, customer_name, customer_number] + selected_menu + [total_amount])
+        sheet.append(order_row)
         workbook.save("orders.xlsx")
         st.success(f"Order submitted successfully! Total amount: Rs. {total_amount:.2f}")
 
@@ -85,5 +98,6 @@ st.header("Orders")
 orders = []
 for row in sheet.iter_rows(min_row=1, values_only=True):
     orders.append(list(row))
-orders_df = pd.DataFrame(orders, columns=["Order ID", "Customer Name", "Customer Number"] + menu_items + ["Total Amount"])
+columns = ["Order ID", "Customer Name", "Customer Number"] + [item.split(" (")[0] for item in menu_items] + ["Total Amount", "Payment Method"]
+orders_df = pd.DataFrame(orders, columns=columns)
 st.write(orders_df)
